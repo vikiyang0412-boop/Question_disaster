@@ -86,7 +86,8 @@
     </div>
 
     <script>
-        const apiKey = ""; // API 키 환경변수 자동 처리
+        // API 키가 비어있는 경우를 대비한 체크 (Canvas 환경에서는 런타임에 주입되거나 수동 입력이 필요합니다)
+        const apiKey = ""; 
         let currentQuizData = [];
 
         async function generateQuiz() {
@@ -111,9 +112,9 @@
                         "id": 1,
                         "question": "문제 내용",
                         "options": ["보기1", "보기2", "보기3", "보기4"],
-                        "answer": 0, // 정답 인덱스 (0~3) 또는 주관식 정답 문자열
+                        "answer": 0,
                         "explanation": "해설 내용",
-                        "type": "multiple" // 'multiple' 또는 'short'
+                        "type": "multiple"
                     }
                 ]
             }
@@ -131,13 +132,24 @@
                     })
                 });
 
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error?.message || "API 요청에 실패했습니다.");
+                }
+
                 const data = await response.json();
-                const result = JSON.parse(data.candidates[0].content.parts[0].text);
+                const textResponse = data.candidates[0].content.parts[0].text;
+                
+                // JSON만 추출하기 위한 정규식 (마크다운 코드 블록 등 방지)
+                const jsonMatch = textResponse.match(/\{[\s\S]*\}/);
+                if (!jsonMatch) throw new Error("유효한 퀴즈 데이터를 받지 못했습니다.");
+                
+                const result = JSON.parse(jsonMatch[0]);
                 currentQuizData = result.quizzes;
                 renderQuiz();
             } catch (error) {
-                console.error(error);
-                alert("문제를 생성하는 중 오류가 발생했습니다. 다시 시도해 주세요.");
+                console.error("Error generating quiz:", error);
+                alert(`오류가 발생했습니다: ${error.message}\n\n도움말: API 키가 올바른지 확인해 보세요.`);
                 resetApp();
             } finally {
                 document.getElementById('loading').classList.add('hidden');
@@ -148,11 +160,15 @@
             for (let i = 0; i < retries; i++) {
                 try {
                     const response = await fetch(url, options);
+                    // 400번대 에러(인증 실패 등)는 재시도하지 않고 즉시 반환
+                    if (response.status >= 400 && response.status < 500) return response;
                     if (response.ok) return response;
-                } catch (e) {}
+                } catch (e) {
+                    if (i === retries - 1) throw e;
+                }
                 await new Promise(res => setTimeout(res, Math.pow(2, i) * 1000));
             }
-            throw new Error("API 연결 실패");
+            throw new Error("네트워크 연결 상태가 좋지 않습니다.");
         }
 
         function renderQuiz() {
@@ -165,7 +181,7 @@
                 
                 let contentHtml = `<h3 class="text-lg font-bold mb-4"><span class="text-indigo-600">Q${index+1}.</span> ${quiz.question}</h3>`;
                 
-                if (quiz.type === 'multiple' || quiz.options) {
+                if (quiz.type === 'multiple' || (quiz.options && quiz.options.length > 0)) {
                     contentHtml += `<div class="space-y-2">`;
                     quiz.options.forEach((opt, optIdx) => {
                         contentHtml += `
@@ -181,9 +197,11 @@
                             class="w-full p-3 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500">`;
                 }
                 
+                const displayAnswer = (quiz.type === 'multiple' || quiz.options) ? quiz.options[quiz.answer] : quiz.answer;
+                
                 contentHtml += `
                     <div id="explanation-${index}" class="hidden mt-4 p-4 bg-amber-50 rounded-lg border border-amber-200 text-sm">
-                        <p class="font-bold text-amber-800 mb-1">정답: ${quiz.type === 'multiple' ? quiz.options[quiz.answer] : quiz.answer}</p>
+                        <p class="font-bold text-amber-800 mb-1">정답: ${displayAnswer}</p>
                         <p class="text-slate-700">${quiz.explanation}</p>
                     </div>`;
 
@@ -205,7 +223,7 @@
                 if (quiz.type === 'multiple' || quiz.options) {
                     const selected = document.querySelector(`input[name="quiz-${index}"]:checked`);
                     userAnswer = selected ? parseInt(selected.value) : -1;
-                    if (userAnswer === quiz.answer) score++;
+                    if (userAnswer === parseInt(quiz.answer)) score++;
                 } else {
                     userAnswer = document.querySelector(`input[name="quiz-${index}"]`).value.trim();
                     if (userAnswer === quiz.answer) score++;
