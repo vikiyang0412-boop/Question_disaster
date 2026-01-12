@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 문제 출제 생성기</title>
+    <style>
+        :root { --primary: #4a90e2; --secondary: #34c759; --bg: #f8f9fa; }
+        body { font-family: 'Pretendard', sans-serif; background-color: var(--bg); color: #333; line-height: 1.6; margin: 0; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+        h1 { text-align: center; color: var(--primary); margin-bottom: 30px; }
+        
+        .input-section { margin-bottom: 30px; }
+        label { font-weight: bold; display: block; margin-bottom: 10px; }
+        textarea { width: 100%; height: 200px; padding: 15px; border: 2px solid #ddd; border-radius: 10px; resize: none; box-sizing: border-box; font-size: 16px; }
+        textarea:focus { border-color: var(--primary); outline: none; }
+        
+        .btn-group { display: flex; gap: 10px; margin-bottom: 30px; }
+        button { flex: 1; padding: 15px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; transition: 0.3s; }
+        .btn-generate { background-color: var(--primary); color: white; }
+        .btn-generate:hover { background-color: #357abd; }
+        .btn-reset { background-color: #e0e0e0; color: #666; }
+
+        .result-section { display: none; border-top: 2px solid #eee; padding-top: 20px; }
+        .question-card { background: #fff; border: 1px solid #eee; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        .q-type { display: inline-block; padding: 4px 10px; border-radius: 5px; font-size: 12px; margin-bottom: 10px; color: white; }
+        .type-multiple { background-color: var(--primary); }
+        .type-subjective { background-color: var(--secondary); }
+        .correct-answer { display: none; margin-top: 10px; padding: 10px; background: #e8f5e9; border-radius: 5px; color: #2e7d32; font-weight: bold; }
+        .show-ans-btn { background: none; border: 1px solid var(--primary); color: var(--primary); padding: 5px 10px; border-radius: 5px; font-size: 12px; cursor: pointer; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>📝 문제 출제 생성기</h1>
+    
+    <div class="input-section">
+        <label for="textInput">지문을 입력하세요 (기사, 교과서 내용 등)</label>
+        <textarea id="textInput" placeholder="여기에 분석할 글을 입력하면 객관식과 주관식 문제를 생성합니다..."></textarea>
+    </div>
+
+    <div class="btn-group">
+        <button class="btn-generate" onclick="generateQuestions()">문제 생성하기</button>
+        <button class="btn-reset" onclick="resetAll()">초기화</button>
+    </div>
+
+    <div id="resultSection" class="result-section">
+        <h2>출제된 문제</h2>
+        <div id="questionsContainer"></div>
+    </div>
+</div>
+
+<script>
+    function generateQuestions() {
+        const text = document.getElementById('textInput').value;
+        if (text.length < 20) {
+            alert("지문이 너무 짧습니다. 조금 더 긴 내용을 입력해주세요.");
+            return;
+        }
+
+        const container = document.getElementById('questionsContainer');
+        container.innerHTML = ''; // 이전 문제 삭제
+        document.getElementById('resultSection').style.display = 'block';
+
+        // 1. 객관식 문제 생성 (예시 로직)
+        const q1 = document.createElement('div');
+        q1.className = 'question-card';
+        q1.innerHTML = `
+            <span class="q-type type-multiple">객관식</span>
+            <p><strong>Q1. 위 글의 핵심 주제로 가장 적절한 것은?</strong></p>
+            <div>① 지문에 언급된 일부 내용의 상세 분석</div>
+            <div>② 본문의 키워드를 활용한 종합적 결론</div>
+            <div>③ 본문과 상반되는 비판적 견해</div>
+            <div>④ 글의 흐름과 관계없는 일반적 상식</div>
+            <button class="show-ans-btn" onclick="toggleAns(this)">정답 확인</button>
+            <div class="correct-answer">정답: ② (지문의 요지를 가장 포괄적으로 담고 있음)</div>
+        `;
+        container.appendChild(q1);
+
+        // 2. 주관식 문제 생성 (예시 로직)
+        const q2 = document.createElement('div');
+        q2.className = 'question-card';
+        q2.innerHTML = `
+            <span class="q-type type-subjective">주관식</span>
+            <p><strong>Q2. 위 글에서 강조하고 있는 핵심 키워드 3가지를 찾아 쓰시오.</strong></p>
+            <div style="border-bottom: 1px solid #ccc; width: 100%; height: 30px; margin-bottom: 10px;"></div>
+            <button class="show-ans-btn" onclick="toggleAns(this)">모범 답안 확인</button>
+            <div class="correct-answer">모범 답안: 입력하신 지문 내 빈도수가 가장 높은 주요 개념어들</div>
+        `;
+        container.appendChild(q2);
+
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    }
+
+    function toggleAns(btn) {
+        const ans = btn.nextElementSibling;
+        ans.style.display = (ans.style.display === 'block') ? 'none' : 'block';
+    }
+
+    function resetAll() {
+        document.getElementById('textInput').value = '';
+        document.getElementById('resultSection').style.display = 'none';
+    }
+</script>
+
+</body>
+</html>
